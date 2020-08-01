@@ -5,6 +5,13 @@ use std::env;
 use actix_session::CookieSession;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 
+struct User {
+    id: i64,
+    nick_name: String,
+    login_name: String,
+    pass_hash: String,
+}
+
 async fn get_dummy(req: HttpRequest) -> impl Responder {
     println!("{:?}", req);
     HttpResponse::Ok()
