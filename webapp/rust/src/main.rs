@@ -47,6 +47,29 @@ struct Sheet {
     reserved_at_unix: i64,
 }
 
+struct Reservation {
+    id: i64,
+    event_id: i64,
+    sheet_id: i64,
+    user_id: i64,
+    reserved_at: NaiveDateTime,
+    canceled_at: NaiveDateTime,
+
+    event: Event,
+    sheet_rank: String,
+    sheet_num: i64,
+    price: i64,
+    reserved_at_unix: i64,
+    canceled_at_unix: i64,
+}
+
+struct Administrator {
+    id: i64,
+    nick_name: String,
+    login_name: String,
+    pass_hash: String,
+}
+
 async fn get_dummy(req: HttpRequest) -> impl Responder {
     println!("{:?}", req);
     HttpResponse::Ok()
