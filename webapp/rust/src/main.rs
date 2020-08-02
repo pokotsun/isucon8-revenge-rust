@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::env;
 
 use actix_session::{CookieSession, Session};
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result};
 
 use chrono::NaiveDateTime;
 
@@ -72,6 +72,15 @@ struct Administrator {
 
 fn sess_user_id(session: &Session) -> Option<i64> {
     session.get::<i64>("user_id").ok().flatten()
+}
+
+fn sess_set_user_id(session: &Session, id: i64) -> Result<()> {
+    session.set("user_id", id)?;
+    Ok(())
+}
+
+fn sess_delete_user_id(session: &Session) {
+    session.remove("user_id")
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {
