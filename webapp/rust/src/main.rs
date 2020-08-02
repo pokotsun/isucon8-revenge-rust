@@ -80,7 +80,20 @@ fn sess_set_user_id(session: &Session, id: i64) -> Result<()> {
 }
 
 fn sess_delete_user_id(session: &Session) {
-    session.remove("user_id")
+    session.remove("user_id");
+}
+
+fn sess_administrator_id(session: &Session) -> Option<i64> {
+    session.get::<i64>("administrator_id").ok().flatten()
+}
+
+fn sess_set_administrator_id(session: &Session, id: i64) -> Result<()> {
+    session.set("administrator_id", id)?;
+    Ok(())
+}
+
+fn sess_delete_administrator_id(session: &Session) {
+    session.remove("administrator_id");
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {
