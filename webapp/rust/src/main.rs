@@ -3,7 +3,7 @@ extern crate actix_web;
 use std::collections::HashMap;
 use std::env;
 
-use actix_session::CookieSession;
+use actix_session::{CookieSession, Session};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 
 use chrono::NaiveDateTime;
@@ -68,6 +68,10 @@ struct Administrator {
     nick_name: String,
     login_name: String,
     pass_hash: String,
+}
+
+fn sess_user_id(session: &Session) -> Option<i64> {
+    session.get::<i64>("user_id").ok().flatten()
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {
