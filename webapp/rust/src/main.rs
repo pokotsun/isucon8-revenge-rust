@@ -119,6 +119,16 @@ async fn get_login_user(pool: &MySqlPool, session: &Session) -> Option<LoginUser
         .ok()
 }
 
+async fn get_login_administrator(pool: &MySqlPool, session: &Session) -> Option<LoginUser> {
+    let administrator_id = sess_administrator_id(session)?;
+
+    sqlx::query_as::<_, LoginUser>("SELECT id, nickname FROM administrators WHERE id = ?")
+        .bind(administrator_id)
+        .fetch_one(pool)
+        .await
+        .ok()
+}
+
 async fn get_dummy(req: HttpRequest) -> impl Responder {
     println!("{:?}", req);
     HttpResponse::Ok()
