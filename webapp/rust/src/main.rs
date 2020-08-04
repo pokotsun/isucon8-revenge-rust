@@ -1,10 +1,13 @@
 extern crate actix_web;
+extern crate sqlx;
 
 use std::collections::HashMap;
 use std::env;
 
 use actix_session::{CookieSession, Session};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result};
+
+use sqlx::mysql::{MySqlPool, MySqlQueryAs};
 
 use chrono::NaiveDateTime;
 
@@ -94,6 +97,26 @@ fn sess_set_administrator_id(session: &Session, id: i64) -> Result<()> {
 
 fn sess_delete_administrator_id(session: &Session) {
     session.remove("administrator_id");
+}
+
+// TODO login_requiredの実装
+
+// TODO admin_login_requiredの実装
+
+#[derive(sqlx::FromRow)]
+struct LoginUser {
+    id: i64,
+    nick_name: String,
+}
+
+async fn get_login_user(pool: &MySqlPool, session: &Session) -> Option<LoginUser> {
+    let uid = sess_user_id(session)?;
+
+    sqlx::query_as::<_, LoginUser>("SELECT id, nickname FROM users WHERE id = ?")
+        .bind(uid)
+        .fetch_one(pool)
+        .await
+        .ok()
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {
