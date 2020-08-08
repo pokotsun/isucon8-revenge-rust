@@ -22,13 +22,13 @@ struct User {
 struct Event {
     id: i64,
     title: String,
-    public: bool,
-    closed: bool,
+    public_fg: bool,
+    closed_fg: bool,
     price: i64,
 
     total: i32,
     remains: i32,
-    sheets: HashMap<String, Sheets>,
+    sheets: HashMap<char, Sheets>,
 }
 
 struct Sheets {
@@ -36,6 +36,17 @@ struct Sheets {
     remains: i32,
     details: Vec<Sheet>,
     price: i64,
+}
+
+impl Sheets {
+    fn new(total: i32, remains: i32, details: Vec<Sheet>, price: i64) -> Sheets {
+        Sheets {
+            total: total,
+            remains: remains,
+            details: details,
+            price: price,
+        }
+    }
 }
 
 struct Sheet {
@@ -127,6 +138,59 @@ async fn get_login_administrator(pool: &MySqlPool, session: &Session) -> Option<
         .fetch_one(pool)
         .await
         .ok()
+}
+
+#[derive(sqlx::FromRow)]
+struct GetEvent {
+    id: i64,
+    title: String,
+    public_fg: bool,
+    closed_fg: bool,
+    price: i64,
+}
+
+async fn get_events(pool: &MySqlPool, all: bool) -> anyhow::Result<Vec<Event>> {
+    let events: Vec<GetEvent> =
+        sqlx::query_as::<_, GetEvent>("SELECT * FROM events ORDER BY id ASC")
+            .fetch_all(pool)
+            .await?
+            .into_iter()
+            .filter(|e| !all && e.public_fg)
+            .collect();
+
+    events.iter().map(move |e| async move {
+        let event = get_event(pool, e.id, -1).await.unwrap();
+        // TODO sheetのdetailをNoneにする?
+        event
+    });
+
+    Ok(Vec::new())
+}
+
+async fn get_event(pool: &MySqlPool, event_id: i64, login_user_id: i64) -> anyhow::Result<Event> {
+    let get_event = sqlx::query_as::<_, GetEvent>("SELECT * FROM events WHERE id = ?")
+        .bind(&event_id)
+        .fetch_one(pool)
+        .await?;
+
+    let mut sheets = HashMap::new();
+    sheets.insert('S', Sheets::new(0, 0, Vec::new(), 0));
+    sheets.insert('A', Sheets::new(0, 0, Vec::new(), 0));
+    sheets.insert('B', Sheets::new(0, 0, Vec::new(), 0));
+    sheets.insert('C', Sheets::new(0, 0, Vec::new(), 0));
+
+    // TODO sheetの処理をもっと書く必要あり
+    Ok(Event {
+        id: get_event.id,
+        title: get_event.title,
+        public_fg: get_event.public_fg,
+        closed_fg: get_event.closed_fg,
+        price: get_event.price,
+
+        total: 0,
+        remains: 0,
+        sheets: sheets,
+    })
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {
