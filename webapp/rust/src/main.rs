@@ -31,6 +31,44 @@ struct Event {
     sheets: HashMap<char, Sheets>,
 }
 
+impl Event {
+    fn new(
+        id: i64,
+        title: String,
+        public_fg: bool,
+        closed_fg: bool,
+        price: i64,
+        total: i32,
+        remains: i32,
+        sheets: HashMap<char, Sheets>,
+    ) -> Event {
+        Event {
+            id: id,
+            title: title,
+            public_fg: public_fg,
+            closed_fg: closed_fg,
+            price: price,
+
+            total: total,
+            remains: remains,
+            sheets: sheets,
+        }
+    }
+
+    fn sanitize_event(self) -> Event {
+        Event::new(
+            self.id,
+            self.title,
+            false,
+            false,
+            0,
+            self.total,
+            self.remains,
+            self.sheets,
+        )
+    }
+}
+
 struct Sheets {
     total: i32,
     remains: i32,
