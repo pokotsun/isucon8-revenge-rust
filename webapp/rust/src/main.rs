@@ -1,5 +1,6 @@
 extern crate actix_web;
 extern crate sqlx;
+extern crate tera;
 
 use std::collections::HashMap;
 use std::env;
@@ -11,6 +12,8 @@ use sqlx::mysql::{MySqlPool, MySqlQueryAs};
 
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+
+use tera::Tera;
 
 struct User {
     id: i64,
@@ -262,13 +265,32 @@ async fn get_dummy(req: HttpRequest) -> impl Responder {
         .body("Hello, actix_web.")
 }
 
+struct Context {
+    db_pool: MySqlPool,
+    templates: tera::Tera,
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "actix_web=debug,actix_server=info");
     env_logger::init();
 
+    let database_url =
+        "mysql://isucon:isucon@tcp(192.168.33.10:3306)/torb?parseTime=true&charset=utf8mb4";
+    let pool = MySqlPool::builder()
+        .max_size(5)
+        .build(&database_url)
+        .await
+        .unwrap();
+
     HttpServer::new(move || {
+        let templates = Tera::new("views/*").unwrap();
+
         App::new()
+            .data(Context {
+                db_pool: pool.clone(),
+                templates: templates,
+            })
             .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .wrap(middleware::Logger::default())
             .service(web::resource("/").route(web::get().to(get_dummy)))
