@@ -10,6 +10,7 @@ use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Res
 use sqlx::mysql::{MySqlPool, MySqlQueryAs};
 
 use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
 struct User {
     id: i64,
@@ -152,7 +153,7 @@ fn sess_delete_administrator_id(session: &Session) {
 
 // TODO admin_login_requiredの実装
 
-#[derive(sqlx::FromRow)]
+#[derive(sqlx::FromRow, Deserialize, Serialize)]
 struct LoginUser {
     id: i64,
     nick_name: String,
@@ -229,6 +230,18 @@ async fn get_event(pool: &MySqlPool, event_id: i64, login_user_id: i64) -> anyho
         remains: 0,
         sheets: sheets,
     })
+}
+
+async fn fillin_user(tux: &mut tera::Context, pool: &MySqlPool, session: &Session) {
+    if let Some(user) = get_login_user(pool, session).await {
+        tux.insert("user", &user);
+    }
+}
+
+async fn fillin_administrator(tux: &mut tera::Context, pool: &MySqlPool, session: &Session) {
+    if let Some(admin) = get_login_administrator(pool, session).await {
+        tux.insert("administrator", &admin);
+    }
 }
 
 async fn get_dummy(req: HttpRequest) -> impl Responder {

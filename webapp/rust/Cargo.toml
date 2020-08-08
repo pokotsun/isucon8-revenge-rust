@@ -18,3 +18,5 @@ env_logger = "0.7"
 serde = { version = "1.0", features = [ "derive"] }
 sqlx = { version = "0.3", features = [ "mysql", "chrono" ] }
 chrono = {version = "0.4", features = ["serde"] }
+
+tera = "1.0"
