@@ -244,6 +244,17 @@ async fn fillin_administrator(tux: &mut tera::Context, pool: &MySqlPool, session
     }
 }
 
+async fn validate_rank(rank: String, pool: &MySqlPool) -> bool {
+    let count = sqlx::query_as::<_, (i32,)>("SELECT COUNT(*) FROM sheets WHERE rank = ?")
+        .bind(&rank)
+        .fetch_one(pool)
+        .await
+        .expect("can't get count of sheets")
+        .0;
+
+    count > 0
+}
+
 async fn get_dummy(req: HttpRequest) -> impl Responder {
     println!("{:?}", req);
     HttpResponse::Ok()
