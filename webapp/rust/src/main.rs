@@ -7,7 +7,9 @@ use std::env;
 use std::process::Command;
 
 use actix_session::{CookieSession, Session};
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result};
+use actix_web::{
+    error, middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result,
+};
 
 use sqlx::mysql::{MySqlPool, MySqlQueryAs};
 
@@ -24,6 +26,7 @@ struct User {
 }
 
 // TODO db_column nameとの対応
+#[derive(sqlx::FromRow, Deserialize, Serialize)]
 struct Event {
     id: i64,
     title: String,
@@ -60,20 +63,21 @@ impl Event {
         }
     }
 
-    fn sanitize_event(self) -> Event {
+    fn sanitize_event(&self) -> Event {
         Event::new(
             self.id,
-            self.title,
+            self.title.clone(),
             false,
             false,
             0,
             self.total,
             self.remains,
-            self.sheets,
+            self.sheets.clone(),
         )
     }
 }
 
+#[derive(sqlx::FromRow, Deserialize, Serialize, Clone)]
 struct Sheets {
     total: i32,
     remains: i32,
@@ -92,6 +96,7 @@ impl Sheets {
     }
 }
 
+#[derive(sqlx::FromRow, Deserialize, Serialize, Clone)]
 struct Sheet {
     id: i64,
     rank: String,
@@ -271,12 +276,39 @@ struct Context {
     templates: tera::Tera,
 }
 
+// TODO fillin_userを差し込む
+async fn get_index(data: web::Data<Context>) -> Result<HttpResponse> {
+    let pool = &data.db_pool;
+    let mut events = get_events(pool, false)
+        .await
+        .map_err(|e| error::ErrorInternalServerError(e))?;
+    for i in 0..events.len() {
+        events[i] = (&events[i]).sanitize_event();
+    }
+
+    let mut ctx = tera::Context::new();
+    ctx.insert("events", &events);
+
+    render(&data.templates, Some(ctx), "index.tmpl")
+}
+
 async fn get_initialize(data: web::Data<Context>) -> impl Responder {
     Command::new("../../db/init.sh")
         .spawn()
         .expect("can't initialize db data.");
 
     HttpResponse::NoContent().finish()
+}
+
+fn render(templates: &tera::Tera, ctx: Option<tera::Context>, name: &str) -> Result<HttpResponse> {
+    let ctx = ctx.unwrap_or(tera::Context::new());
+
+    let view = templates
+        .render(name, &ctx)
+        .map_err(|e| error::ErrorInternalServerError(e))?;
+    Ok(HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(view))
 }
 
 #[actix_rt::main]
@@ -293,7 +325,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     HttpServer::new(move || {
-        let templates = Tera::new("views/*.html").unwrap();
+        let templates = Tera::new("views/*.tmpl").unwrap();
 
         App::new()
             .data(Context {
@@ -302,7 +334,7 @@ async fn main() -> std::io::Result<()> {
             })
             .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .wrap(middleware::Logger::default())
-            .service(web::resource("/").route(web::get().to(get_dummy)))
+            .service(web::resource("/").route(web::get().to(get_index)))
             .service(web::resource("/initialize").route(web::get().to(get_initialize)))
     })
     .bind("127.0.0.1:8080")?
