@@ -4,6 +4,7 @@ extern crate tera;
 
 use std::collections::HashMap;
 use std::env;
+use std::process::Command;
 
 use actix_session::{CookieSession, Session};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result};
@@ -270,6 +271,14 @@ struct Context {
     templates: tera::Tera,
 }
 
+async fn get_initialize(data: web::Data<Context>) -> impl Responder {
+    Command::new("../../db/init.sh")
+        .spawn()
+        .expect("can't initialize db data.");
+
+    HttpResponse::NoContent().finish()
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     env::set_var("RUST_LOG", "actix_web=debug,actix_server=info");
@@ -284,7 +293,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
 
     HttpServer::new(move || {
-        let templates = Tera::new("views/*").unwrap();
+        let templates = Tera::new("views/*.html").unwrap();
 
         App::new()
             .data(Context {
@@ -294,6 +303,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(CookieSession::signed(&[0; 32]).secure(false))
             .wrap(middleware::Logger::default())
             .service(web::resource("/").route(web::get().to(get_dummy)))
+            .service(web::resource("/initialize").route(web::get().to(get_initialize)))
     })
     .bind("127.0.0.1:8080")?
     .run()
